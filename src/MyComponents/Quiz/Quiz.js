@@ -1,142 +1,106 @@
-import React, { useReducer, useEffect } from 'react';
-import "../Styles/Styles.css";
-import questions from "../QuizData/QuizData";
-import { QuizResult } from '../QuizResult/QuizResult';
-
-const initialState = {
-  currentQuestion: 0,
-  score: 0,
-  correctAns: 0,
-  skippedCount: 0,
-  showResult: false,
-  clicked: false,
-  remainingTime: 30
-};
-
-const reducer = (state, action) => {
-  switch (action.type) {
-    case 'NEXT_QUESTION':
-      const nextQuestion = state.currentQuestion + 1;
-      const newState = {
-        ...state,
-        currentQuestion: nextQuestion < questions.length ? nextQuestion : state.currentQuestion,
-        clicked: false,
-        remainingTime: nextQuestion < questions.length ? 30 : state.remainingTime,
-        showResult: nextQuestion >= questions.length
-      };
-      return newState;
-
-    case 'SKIP_QUESTION':
-      return {
-        ...state,
-        currentQuestion: state.currentQuestion + 1,
-        skippedCount: state.skippedCount + 1,
-        clicked: false,
-        remainingTime: 30
-      };
-
-    case 'ANSWER_QUESTION':
-      return {
-        ...state,
-        score: action.payload.isCorrect ? state.score + 5 : state.score,
-        correctAns: action.payload.isCorrect ? state.correctAns + 1 : state.correctAns,
-        clicked: true
-      };
-
-    case 'PLAY_AGAIN':
-      return initialState;
-
-    case 'SET_CLICKED':
-      return {
-        ...state,
-        clicked: action.payload
-      };
-
-    case 'TICK_TIMER':
-      if (!state.showResult && state.currentQuestion < questions.length - 1 && state.remainingTime > 0) {
-        return {
-          ...state,
-          remainingTime: state.remainingTime - 1
-        };
-      } else if (!state.showResult && state.currentQuestion < questions.length - 1 && state.remainingTime === 0) {
-        return {
-          ...state,
-          remainingTime: 30
-        };
-      } else {
-        return state;
-      }
-
-    default:
-      return state;
-  }
-};
+import React, { useState,useEffect } from 'react'                                                                   
+import "../Styles/Styles.css"
+import questions from "../QuizData/QuizData"
+import { QuizResult } from '../QuizResult/QuizResult'
 
 const Quiz = () => {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const[currentQuestion,setCurrentQuestion]= useState(0)
+  const[score,setScore]=useState(0)
+  const[correctAns,setCorrectAns]=useState(0)
+  const [skippedCount, setSkippedCount] = useState(0);
+  const[showResult,setShowResult]=useState(false)
+  const[clicked,setClicked]=useState(false)
+  const [remainingTime, setRemainingTime] = useState(30);
+
+  const handleNextOptions = ()=>{
+    const nextQuestion = currentQuestion+1
+    if(nextQuestion<questions.length){
+      setCurrentQuestion(nextQuestion);
+      setClicked(false);
+      setRemainingTime(30);
+    }else{
+      setShowResult(true);
+      
+    }
+  };
+
+  const handleSkipQuestion = () => {
+    const nextQuestion = currentQuestion + 1;
+    if (nextQuestion < questions.length) {
+      setCurrentQuestion(nextQuestion);
+      setSkippedCount(skippedCount+1);
+      setClicked(false);
+      setRemainingTime(30); 
+    } else {
+      setShowResult(true);
+    }
+  };
+
+  const handleAnswerOption = (isCorrect)=>{
+     if(isCorrect){
+     setScore(score+5)
+     setCorrectAns(correctAns+1)
+     } 
+     setClicked(true);
+  };
+
+  const handlePlayAgain = ()=>{
+    setCurrentQuestion(0);
+    setScore(0);
+    setCorrectAns(0);
+    setSkippedCount(0);
+    setShowResult(false);
+    setClicked(false);
+    setRemainingTime(30);
+  };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      dispatch({ type: 'TICK_TIMER' });
-
-      // Add a check to transition to the next question if timer is up
-      if (state.remainingTime === 0) {
-        dispatch({ type: 'NEXT_QUESTION' });
-      }
-    }, 1000); // 1 second
+    let timer;
+    if (!showResult && currentQuestion < questions.length - 1 && remainingTime > 0) {
+      timer = setTimeout(() => {
+        setRemainingTime(remainingTime - 1);
+      }, 1000); // 1 second
+    } else if (!showResult && currentQuestion < questions.length - 1 && remainingTime === 0) {
+      setRemainingTime(30);
+      handleNextOptions();
+    }
 
     return () => clearTimeout(timer);
-  }, [state]);
+  }, [showResult, currentQuestion, remainingTime, handleNextOptions]);
 
-
-  const totalSkippedQuestions = questions.length - (state.correctAns + (state.currentQuestion - state.skippedCount));
+  const totalSkippedQuestions = questions.length - (correctAns + (currentQuestion - skippedCount));
 
   return (
     <>
-      <div className='container'>
-        {state.showResult ? (
-          <QuizResult
-            score={state.score}
-            correctAns={state.correctAns}
-            handlePlayAgain={() => dispatch({ type: 'PLAY_AGAIN' })}
-            skippedCount={totalSkippedQuestions}
-            totalQuestions={questions.length}
-          />
-        ) : (
-          <>
-            <div className='question-section'>
-              <h4>Score: {state.score}</h4>
-              <div className='timer'>{state.remainingTime}</div>
-              <div className='question-count'>
-                <span>Question {state.currentQuestion + 1} of {questions.length}</span>
-              </div>
-              <div className='question-text'>
-                {questions[state.currentQuestion].questionText}
-              </div>
-            </div>
-            <div className='answer-section'>
-              {questions[state.currentQuestion].answerOptions.map((ans, index) => (
-                <button
-                  key={index}
-                  className={`button ${state.clicked && ans.isCorrect ? 'correct' : 'button'}`}
-                  disabled={state.clicked}
-                  onClick={() => dispatch({ type: 'ANSWER_QUESTION', payload: ans })}
-                >
-                  {ans.answerText}
-                </button>
-              ))}
-              <div className='actions'>
-                <button onClick={() => dispatch({ type: 'SKIP_QUESTION' })}>Skip</button>
-                <button disabled={!state.clicked} onClick={() => dispatch({ type: 'NEXT_QUESTION' })}>
-                  Next
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </>
-  );
-};
+    <div className='container'>
+      {showResult?( <QuizResult score={score} correctAns={correctAns}  handlePlayAgain={ handlePlayAgain} skippedCount={totalSkippedQuestions}  totalQuestions={questions.length}/>)
+      :(
+       <>
+     <div className='question-section'>
+       <h4>Score:{score}</h4>
+       <div className='timer'>{remainingTime}</div> 
+       <div className='question-count'>
+         <span>Question {currentQuestion+1} of {questions.length}</span>
+       </div>
+       <div className='question-text'>
+         {questions[currentQuestion].questionText}
+       </div>
+     </div>
+     
+     <div className='answer-section'>
+      {questions[currentQuestion].answerOptions.map((ans,index)=>{
+        return  <button className={`button ${clicked && ans.isCorrect? "correct":"button"}`} disabled={clicked} key={index} onClick={()=>handleAnswerOption(ans.isCorrect)}>{ans.answerText}</button>
+      })}
+       <div className='actions'>
+       <button  onClick={handleSkipQuestion}>Skip</button>
+       <button disabled={!clicked} onClick={handleNextOptions}>Next</button>
+     </div>
+     </div>
+     </>)}
+     
+    </div>
+   </>
+  )
+}
 
-export default Quiz;
+export default Quiz
