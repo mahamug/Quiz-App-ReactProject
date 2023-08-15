@@ -78,10 +78,16 @@ const Quiz = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       dispatch({ type: 'TICK_TIMER' });
+
+      // Add a check to transition to the next question if timer is up
+      if (state.remainingTime === 0) {
+        dispatch({ type: 'NEXT_QUESTION' });
+      }
     }, 1000); // 1 second
 
     return () => clearTimeout(timer);
   }, [state]);
+
 
   const totalSkippedQuestions = questions.length - (state.correctAns + (state.currentQuestion - state.skippedCount));
 
